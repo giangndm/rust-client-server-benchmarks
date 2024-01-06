@@ -68,7 +68,6 @@ pub fn config_transport_config(transport_config: &mut TransportConfig) {
     transport_config.ack_frequency_config(Some(acks));
     transport_config.enable_segmentation_offload(true);
     transport_config.initial_mtu(1460);
-    transport_config.min_mtu(1460);
 }
 
 #[allow(unused)]
