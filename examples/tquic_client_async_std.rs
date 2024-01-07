@@ -33,10 +33,10 @@ use tquic::TlsConfig;
 use tquic::TransportHandler;
 use tquic::TIMER_GRANULARITY;
 
-mod tquic_native_utils;
+mod tquic_async_std_utils;
 
-use tquic_native_utils::QuicSocket;
-use tquic_native_utils::Result;
+use tquic_async_std_utils::QuicSocket;
+use tquic_async_std_utils::Result;
 
 const MAX_BUF_SIZE: usize = 65536;
 
@@ -84,7 +84,7 @@ struct Client {
 }
 
 impl Client {
-    fn new(option: &ClientOpt) -> Result<Self> {
+    async fn new(option: &ClientOpt) -> Result<Self> {
         let mut config = Config::new()?;
         config.set_max_idle_timeout(option.idle_timeout);
         config.set_send_udp_payload_size(1460);
@@ -96,7 +96,7 @@ impl Client {
         let context = Rc::new(RefCell::new(ClientContext { finish: false }));
         let handlers = ClientHandler::new(option, context.clone());
 
-        let sock = Rc::new(QuicSocket::new_client_socket(option.connect_to.is_ipv4())?);
+        let sock = Rc::new(QuicSocket::new_client_socket(option.connect_to.is_ipv4()).await?);
 
         Ok(Client {
             endpoint: Endpoint::new(Box::new(config), false, Box::new(handlers), sock.clone()),
@@ -115,34 +115,32 @@ impl Client {
         if self.context.borrow().finish() {
             return Ok(());
         }
-        let timeout = cmp::min(self.endpoint.timeout(), Some(TIMER_GRANULARITY));
 
-        self.sock.socket.set_read_timeout(timeout)?;
+        loop {
+            // Read datagram from the socket.
+            let (len, local, remote) = match self.sock.recv_from(&mut self.recv_buf) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Ok(());
+                }
+            };
+            debug!("socket recv recv {} bytes from {:?}", len, remote);
 
-        // Read datagram from the socket.
-        let (len, local, remote) = match self.sock.recv_from(&mut self.recv_buf) {
-            Ok(v) => v,
-            Err(e) => {
-                self.endpoint.on_timeout(Instant::now());
-                return Ok(());
-            }
-        };
-        debug!("socket recv recv {} bytes from {:?}", len, remote);
+            let pkt_buf = &mut self.recv_buf[..len];
+            let pkt_info = PacketInfo {
+                src: remote,
+                dst: local,
+                time: Instant::now(),
+            };
 
-        let pkt_buf = &mut self.recv_buf[..len];
-        let pkt_info = PacketInfo {
-            src: remote,
-            dst: local,
-            time: Instant::now(),
-        };
-
-        // Process the incoming packet.
-        match self.endpoint.recv(pkt_buf, &pkt_info) {
-            Ok(_) => {}
-            Err(e) => {
-                error!("recv failed: {:?}", e);
-            }
-        };
+            // Process the incoming packet.
+            match self.endpoint.recv(pkt_buf, &pkt_info) {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("recv failed: {:?}", e);
+                }
+            };
+        }
 
         Ok(())
     }
@@ -350,14 +348,15 @@ impl TransportHandler for ClientHandler {
 
 pub const TIMER_GRANULARITY2: Duration = Duration::from_millis(10);
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let option = ClientOpt::parse();
 
     // Initialize logging.
     env_logger::builder().init();
 
     // Create client.
-    let mut client = Client::new(&option)?;
+    let mut client = Client::new(&option).await?;
 
     // Connect to server.
     client.endpoint.connect(
@@ -374,6 +373,12 @@ fn main() -> Result<()> {
         client.endpoint.process_connections()?;
         if client.finish() {
             break;
+        }
+
+        let timeout = cmp::min(client.endpoint.timeout(), Some(TIMER_GRANULARITY));
+        if client.sock.wait_data(timeout).await.is_err() {
+            client.endpoint.on_timeout(Instant::now());
+            continue;
         }
 
         // Process timeout events
