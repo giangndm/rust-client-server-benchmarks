@@ -1,19 +1,22 @@
-use std::{net::UdpSocket, time::Instant};
+use std::time::Instant;
 
-fn main() {
-    let stream = UdpSocket::bind("0.0.0.0:0").unwrap();
-    stream.connect("0.0.0.0:8080").unwrap();
+use tokio::net::UdpSocket;
+
+#[tokio::main]
+async fn main() {
+    let stream = UdpSocket::bind("0.0.0.0:0").await.unwrap();
+    stream.connect("0.0.0.0:8080").await.unwrap();
     let mut buf = [0; 1460];
     let mut chunk_at = Instant::now();
     let mut pkt_count = 0;
 
     for _ in 0..100 {
-        stream.send(&buf).unwrap();
+        stream.send(&buf).await.unwrap();
     }
 
     loop {
-        stream.recv(&mut buf).unwrap();
-        stream.send(&buf).unwrap();
+        stream.recv(&mut buf).await.unwrap();
+        stream.send(&buf).await.unwrap();
 
         pkt_count += 1;
         if pkt_count > 10000 {
