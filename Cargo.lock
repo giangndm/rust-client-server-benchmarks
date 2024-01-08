@@ -1122,8 +1122,9 @@ dependencies = [
 
 [[package]]
 name = "quinn"
-version = "0.11.0"
-source = "git+https://github.com/quinn-rs/quinn.git#6e3d10857e724c749c37d29e2601140c26464858"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cc2c5017e4b43d5995dcea317bc46c1e09404c0a9664d2908f7f02dfe943d75"
 dependencies = [
  "bytes",
  "pin-project-lite",
@@ -1137,9 +1138,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "quinn-plaintext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb0e784540a62e207fafa749f17a80ea1c67a59b9d5b30c9083a97bcc42d6eea"
+dependencies = [
+ "bytes",
+ "quinn-proto",
+ "seahash",
+ "tracing",
+]
+
+[[package]]
 name = "quinn-proto"
-version = "0.11.0"
-source = "git+https://github.com/quinn-rs/quinn.git#6e3d10857e724c749c37d29e2601140c26464858"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "141bf7dfde2fbc246bfd3fe12f2455aa24b0fbd9af535d8c86c7bd1381ff2b1a"
 dependencies = [
  "bytes",
  "rand",
@@ -1155,15 +1169,15 @@ dependencies = [
 
 [[package]]
 name = "quinn-udp"
-version = "0.5.0"
-source = "git+https://github.com/quinn-rs/quinn.git#6e3d10857e724c749c37d29e2601140c26464858"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "055b4e778e8feb9f93c4e439f71dc2156ef13360b432b799e179a8c4cdf0b1d7"
 dependencies = [
  "bytes",
  "libc",
- "once_cell",
  "socket2 0.5.5",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1412,6 +1426,12 @@ dependencies = [
  "ring 0.17.7",
  "untrusted 0.9.0",
 ]
+
+[[package]]
+name = "seahash"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
 
 [[package]]
 name = "security-framework"
@@ -1778,6 +1798,7 @@ dependencies = [
  "mio",
  "monoio",
  "quinn",
+ "quinn-plaintext",
  "quinn-proto",
  "rcgen",
  "rustc-hash",

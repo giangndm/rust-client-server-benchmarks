@@ -1,10 +1,20 @@
-use quinn_utils::make_server_endpoint;
+use std::net::SocketAddr;
+use clap::Parser;
+use quinn::Endpoint;
 
-mod quinn_utils;
+#[derive(Parser, Debug, Clone)]
+#[clap(name = "server")]
+pub struct ServerOpt {
+    /// Listen addr
+    #[clap(long, default_value = "0.0.0.0:8080")]
+    listen: SocketAddr,
+}
 
 #[tokio::main]
 async fn main() {
-    let (endpoint, _server_cert) = make_server_endpoint("0.0.0.0:8080".parse().unwrap()).unwrap();
+    let opt = ServerOpt::parse();
+
+    let endpoint = Endpoint::server(quinn_plaintext::server_config(), opt.listen).unwrap();
     while let Some(incoming_conn) = endpoint.accept().await {
         let conn = incoming_conn.await.unwrap();
         println!("new connection from {}", conn.remote_address());
